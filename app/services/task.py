@@ -8,7 +8,7 @@ from loguru import logger
 from app.config import config
 from app.models import const
 from app.models.schema import VideoConcatMode, VideoParams
-from app.services import llm, material, subtitle, video, voice, upload_post
+from app.services import llm, material, subtitle, video, voice, upload_post, social_publisher
 from app.services import state as sm
 from app.utils import utils
 
@@ -353,9 +353,26 @@ def start(task_id, params: VideoParams, stop_at: str = "video"):
         f"task {task_id} finished, generated {len(final_video_paths)} videos."
     )
 
-    # 7. Cross-post to TikTok/Instagram (if enabled)
+    # 7. Cross-post via legacy Upload-Post / integrated local social publisher
     cross_post_results = []
-    if upload_post.upload_post_service.is_configured() and upload_post.upload_post_service.auto_upload:
+    if social_publisher.social_publisher_service.is_configured() and social_publisher.social_publisher_service.auto_upload:
+        logger.info("\n\n## publishing videos via integrated social-auto-upload")
+        for video_path in final_video_paths:
+            publish_results = social_publisher.publish_video(
+                video_path=video_path,
+                video_subject=params.video_subject,
+                video_script=video_script,
+                tags=video_terms if isinstance(video_terms, list) else [],
+            )
+            cross_post_results.extend(publish_results)
+            for result in publish_results:
+                if result.get("success"):
+                    logger.info(f"✅ Published: {video_path} -> {result.get('platform')}")
+                else:
+                    logger.warning(
+                        f"⚠️ Failed to publish: {video_path} -> {result.get('platform')} - {result.get('message', 'Unknown error')}"
+                    )
+    elif upload_post.upload_post_service.is_configured() and upload_post.upload_post_service.auto_upload:
         logger.info("\n\n## cross-posting videos to TikTok/Instagram")
         for video_path in final_video_paths:
             result = upload_post.cross_post_video(

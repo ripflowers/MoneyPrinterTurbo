@@ -261,3 +261,52 @@ upload_post_platforms = ["tiktok", "instagram"]
 
 # Automatically cross-post videos after generation (if false, you'll need to call the API manually)
 upload_post_auto_upload = false
+
+########## Integrated social-auto-upload (local multi-platform publisher)
+# Enable local publisher integration (vendored from social-auto-upload)
+social_auto_upload_enabled = false
+
+# Automatically publish generated videos after generation
+social_auto_upload_auto_publish = false
+
+# Run browser automation in headless mode by default
+social_auto_upload_headless = true
+
+# Enable verbose uploader debug logs
+social_auto_upload_debug = false
+
+# Optional custom Chrome executable path for patchright
+social_auto_upload_local_chrome_path = ""
+
+# Enabled target platforms: douyin, kuaishou, xiaohongshu, bilibili
+social_auto_upload_platforms = ["douyin"]
+
+[social_auto_upload_douyin]
+account_name = ""
+title = ""
+desc = ""
+schedule_time = ""
+thumbnail_file = ""
+product_link = ""
+product_title = ""
+
+[social_auto_upload_kuaishou]
+account_name = ""
+title = ""
+desc = ""
+schedule_time = ""
+thumbnail_file = ""
+
+[social_auto_upload_xiaohongshu]
+account_name = ""
+title = ""
+desc = ""
+schedule_time = ""
+thumbnail_file = ""
+
+[social_auto_upload_bilibili]
+account_name = ""
+title = ""
+desc = ""
+schedule_time = ""
+tid = 0

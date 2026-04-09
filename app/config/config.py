@@ -41,6 +41,27 @@ def save_config():
         f.write(toml.dumps(_cfg))
 
 
+def sync_social_auto_upload_runtime_config():
+    """Keep vendored social-auto-upload conf.py in sync with MoneyPrinterTurbo config."""
+    runtime_conf = os.path.join(root_dir, "app", "thirdparty", "social_auto_upload", "conf.py")
+    chrome_path = app.get("social_auto_upload_local_chrome_path", "")
+    headless = app.get("social_auto_upload_headless", True)
+    debug = app.get("social_auto_upload_debug", False)
+
+    content = (
+        "from pathlib import Path\n\n"
+        "BASE_DIR = Path.home() / '.moneyprinterturbo' / 'social_auto_upload'\n"
+        "XHS_SERVER = 'http://127.0.0.1:11901'\n"
+        f"LOCAL_CHROME_PATH = {chrome_path!r}\n"
+        f"LOCAL_CHROME_HEADLESS = {bool(headless)!r}\n"
+        f"DEBUG_MODE = {bool(debug)!r}\n"
+    )
+
+    os.makedirs(os.path.dirname(runtime_conf), exist_ok=True)
+    with open(runtime_conf, "w", encoding="utf-8") as fp:
+        fp.write(content)
+
+
 _cfg = load_config()
 app = _cfg.get("app", {})
 whisper = _cfg.get("whisper", {})
@@ -79,5 +100,7 @@ if imagemagick_path and os.path.isfile(imagemagick_path):
 ffmpeg_path = app.get("ffmpeg_path", "")
 if ffmpeg_path and os.path.isfile(ffmpeg_path):
     os.environ["IMAGEIO_FFMPEG_EXE"] = ffmpeg_path
+
+sync_social_auto_upload_runtime_config()
 
 logger.info(f"{project_name} v{project_version}")

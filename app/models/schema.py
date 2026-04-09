@@ -1,6 +1,6 @@
 import warnings
 from enum import Enum
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import pydantic
 from pydantic import BaseModel
@@ -176,6 +176,13 @@ class BaseResponse(BaseModel):
     data: Any = None
 
 
+class SocialPublishRequest(BaseModel):
+    video_path: str
+    video_subject: str
+    video_script: Optional[str] = ""
+    tags: Optional[List[str]] = None
+
+
 class TaskVideoRequest(VideoParams, BaseModel):
     pass
 
@@ -304,6 +311,33 @@ class BgmUploadResponse(BaseResponse):
                 "data": {"file": "/MoneyPrinterTurbo/resource/songs/example.mp3"},
             },
         }
+
+class SocialPublishResponse(BaseResponse):
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "status": 200,
+                "message": "success",
+                "data": {
+                    "results": [
+                        {
+                            "platform": "douyin",
+                            "success": True,
+                            "account_name": "main",
+                            "message": "submitted",
+                            "video_path": "/tmp/demo.mp4",
+                            "payload": {
+                                "title": "示例标题",
+                                "description": "示例文案",
+                                "tags": ["AI", "短视频"],
+                                "publish_strategy": "immediate"
+                            }
+                        }
+                    ]
+                },
+            },
+        }
+
 
 class VideoMaterialRetrieveResponse(BaseResponse):
     class Config:
