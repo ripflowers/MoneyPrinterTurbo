@@ -176,15 +176,33 @@ class BaseResponse(BaseModel):
     data: Any = None
 
 
+class SocialPublishPlatformConfig(BaseModel):
+    enabled: bool = True
+    title: Optional[str] = ""
+    description: Optional[str] = ""
+    tags: Optional[List[str]] = None
+    schedule_time: Optional[str] = ""
+    thumbnail_file: Optional[str] = ""
+    account_name: Optional[str] = ""
+    product_link: Optional[str] = ""
+    product_title: Optional[str] = ""
+    tid: Optional[int] = None
+
+
 class SocialPublishRequest(BaseModel):
     video_path: str
     video_subject: str
     video_script: Optional[str] = ""
     tags: Optional[List[str]] = None
+    platforms: Optional[List[str]] = None
+    platform_overrides: Optional[Dict[str, SocialPublishPlatformConfig]] = None
 
 
 class TaskVideoRequest(VideoParams, BaseModel):
-    pass
+    social_publish_enabled: Optional[bool] = None
+    social_publish_auto: Optional[bool] = None
+    social_publish_platforms: Optional[List[str]] = None
+    social_publish_platform_overrides: Optional[Dict[str, SocialPublishPlatformConfig]] = None
 
 
 class TaskQueryRequest(BaseModel):

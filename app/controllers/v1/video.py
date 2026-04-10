@@ -142,6 +142,8 @@ def publish_social_video(request: Request, body: SocialPublishRequest):
         video_subject=body.video_subject,
         video_script=body.video_script or "",
         tags=body.tags or [],
+        target_platforms=body.platforms or None,
+        platform_overrides=body.platform_overrides or None,
     )
     return utils.get_response(200, {"results": results})
 

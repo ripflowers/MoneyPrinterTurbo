@@ -8,7 +8,7 @@ from loguru import logger
 from app.config import config
 from app.models import const
 from app.models.schema import VideoConcatMode, VideoParams
-from app.services import llm, material, subtitle, video, voice, upload_post, social_publisher
+from app.services import llm, material, subtitle, video, voice, social_publisher
 from app.services import state as sm
 from app.utils import utils
 
@@ -353,16 +353,29 @@ def start(task_id, params: VideoParams, stop_at: str = "video"):
         f"task {task_id} finished, generated {len(final_video_paths)} videos."
     )
 
-    # 7. Cross-post via legacy Upload-Post / integrated local social publisher
+    # 7. Publish generated videos via integrated social publisher
     cross_post_results = []
-    if social_publisher.social_publisher_service.is_configured() and social_publisher.social_publisher_service.auto_upload:
-        logger.info("\n\n## publishing videos via integrated social-auto-upload")
+    task_publish_enabled = getattr(params, "social_publish_enabled", None)
+    task_auto_publish = getattr(params, "social_publish_auto", None)
+    task_publish_platforms = getattr(params, "social_publish_platforms", None)
+    task_platform_overrides = getattr(params, "social_publish_platform_overrides", None)
+
+    should_publish = (
+        social_publisher.social_publisher_service.is_configured()
+        and (task_publish_enabled if task_publish_enabled is not None else True)
+        and (task_auto_publish if task_auto_publish is not None else social_publisher.social_publisher_service.auto_upload)
+    )
+
+    if should_publish:
+        logger.info("\n\n## publishing videos via integrated social publisher")
         for video_path in final_video_paths:
             publish_results = social_publisher.publish_video(
                 video_path=video_path,
                 video_subject=params.video_subject,
                 video_script=video_script,
                 tags=video_terms if isinstance(video_terms, list) else [],
+                target_platforms=task_publish_platforms,
+                platform_overrides=task_platform_overrides,
             )
             cross_post_results.extend(publish_results)
             for result in publish_results:
@@ -372,18 +385,6 @@ def start(task_id, params: VideoParams, stop_at: str = "video"):
                     logger.warning(
                         f"⚠️ Failed to publish: {video_path} -> {result.get('platform')} - {result.get('message', 'Unknown error')}"
                     )
-    elif upload_post.upload_post_service.is_configured() and upload_post.upload_post_service.auto_upload:
-        logger.info("\n\n## cross-posting videos to TikTok/Instagram")
-        for video_path in final_video_paths:
-            result = upload_post.cross_post_video(
-                video_path=video_path,
-                title=params.video_subject or "Check out this video! #shorts #viral"
-            )
-            cross_post_results.append(result)
-            if result.get('success'):
-                logger.info(f"✅ Cross-posted: {video_path}")
-            else:
-                logger.warning(f"⚠️ Failed to cross-post: {video_path} - {result.get('error', 'Unknown error')}")
 
     kwargs = {
         "videos": final_video_paths,
