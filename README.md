@@ -402,3 +402,71 @@ Trying to load the model directly from the local cache, if it exists.
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=harry0703/MoneyPrinterTurbo&type=Date)](https://star-history.com/#harry0703/MoneyPrinterTurbo&Date)
+
+
+## 多平台发布融合说明
+
+当前项目已经内置 `social-auto-upload` 的核心能力，不再只是单独的视频生成器。现在支持把生成完成的视频继续发布到多个平台，形成“生成 -> 发布”的一体化工作流。
+
+### 已融合能力
+
+- 生成完成后自动发布
+- 通过 API 手动触发发布
+- 在 WebUI 中配置各平台账号、标题、描述、定时、封面等参数
+- 支持平台：抖音、快手、小红书、Bilibili
+
+### 配置入口
+
+在 `config.toml` 中配置以下参数：
+
+- `social_auto_upload_enabled`
+- `social_auto_upload_auto_publish`
+- `social_auto_upload_platforms`
+- `social_auto_upload_headless`
+- `social_auto_upload_debug`
+- `social_auto_upload_local_chrome_path`
+
+以及各平台配置块：
+
+- `[social_auto_upload_douyin]`
+- `[social_auto_upload_kuaishou]`
+- `[social_auto_upload_xiaohongshu]`
+- `[social_auto_upload_bilibili]`
+
+账号登录态 / cookie 目录默认复用：
+
+`~/.moneyprinterturbo/social_auto_upload`
+
+### API 用法
+
+除了正常生成视频，还可以手动调用：
+
+- `POST /api/v1/social/publish`
+
+请求体示例：
+
+```json
+{
+  "video_path": "/absolute/path/to/final-1.mp4",
+  "video_subject": "春日咖啡店 vlog",
+  "video_script": "今天拍了一支轻松的城市咖啡 vlog",
+  "tags": ["咖啡", "vlog", "城市生活"],
+  "platforms": ["douyin", "xiaohongshu"],
+  "platform_overrides": {
+    "douyin": {
+      "title": "春日咖啡店 vlog",
+      "description": "城市散步 + 咖啡探店 #咖啡 #vlog",
+      "schedule_time": "2026-04-10T18:30:00"
+    },
+    "xiaohongshu": {
+      "title": "今天的咖啡店氛围太舒服了",
+      "tags": ["咖啡店", "探店", "日常vlog"]
+    }
+  }
+}
+```
+
+### 工作流说明
+
+默认推荐使用项目内置的社交发布能力，而不是旧的 Upload-Post 双轨方案。现在这套融合逻辑已经把发布能力作为视频任务的一部分，可以在自动发布和手动发布之间复用同一套平台配置。
+

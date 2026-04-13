@@ -19,6 +19,8 @@ from app.models.schema import (
     AudioRequest,
     BgmRetrieveResponse,
     BgmUploadResponse,
+    SocialPublishRequest,
+    SocialPublishResponse,
     SubtitleRequest,
     TaskDeletionResponse,
     TaskQueryRequest,
@@ -29,6 +31,7 @@ from app.models.schema import (
     VideoMaterialRetrieveResponse
 )
 from app.services import state as sm
+from app.services import social_publisher
 from app.services import task as tm
 from app.utils import utils
 
@@ -117,6 +120,32 @@ def create_audio(
     background_tasks: BackgroundTasks, request: Request, body: AudioRequest
 ):
     return create_task(request, body, stop_at="audio")
+
+
+@router.post(
+    "/social/publish",
+    response_model=SocialPublishResponse,
+    summary="Publish a generated video to configured social platforms",
+)
+def publish_social_video(request: Request, body: SocialPublishRequest):
+    request_id = base.get_task_id(request)
+    video_path = body.video_path
+    if not os.path.isfile(video_path):
+        raise HttpException(
+            task_id=request_id,
+            status_code=404,
+            message=f"{request_id}: video file not found",
+        )
+
+    results = social_publisher.publish_video(
+        video_path=video_path,
+        video_subject=body.video_subject,
+        video_script=body.video_script or "",
+        tags=body.tags or [],
+        target_platforms=body.platforms or None,
+        platform_overrides=body.platform_overrides or None,
+    )
+    return utils.get_response(200, {"results": results})
 
 
 def create_task(

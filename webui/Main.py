@@ -17,9 +17,10 @@ if root_dir not in sys.path:
 from app.config import config
 from app.models.schema import (
     MaterialInfo,
+    SocialPublishPlatformConfig,
+    TaskVideoRequest,
     VideoAspect,
     VideoConcatMode,
-    VideoParams,
     VideoTransitionMode,
 )
 from app.services import llm, voice
@@ -487,7 +488,7 @@ left_panel = panel[0]
 middle_panel = panel[1]
 right_panel = panel[2]
 
-params = VideoParams(video_subject="")
+params = TaskVideoRequest(video_subject="")
 uploaded_files = []
 
 with left_panel:
@@ -940,6 +941,120 @@ with right_panel:
             params.stroke_color = st.color_picker(tr("Stroke Color"), "#000000")
         with stroke_cols[1]:
             params.stroke_width = st.slider(tr("Stroke Width"), 0.0, 10.0, 1.5)
+    with st.expander("Social Auto Upload", expanded=False):
+        config.app["social_auto_upload_enabled"] = st.checkbox(
+            "启用本地多平台自动发布",
+            value=config.app.get("social_auto_upload_enabled", False),
+        )
+        config.app["social_auto_upload_auto_publish"] = st.checkbox(
+            "生成后自动发布",
+            value=config.app.get("social_auto_upload_auto_publish", False),
+        )
+        params.social_publish_enabled = config.app["social_auto_upload_enabled"]
+        params.social_publish_auto = config.app["social_auto_upload_auto_publish"]
+        social_platform_options = ["douyin", "kuaishou", "xiaohongshu", "bilibili"]
+        saved_social_platforms = config.app.get("social_auto_upload_platforms", ["douyin"])
+        config.app["social_auto_upload_platforms"] = st.multiselect(
+            "发布平台",
+            options=social_platform_options,
+            default=saved_social_platforms,
+        )
+        params.social_publish_platforms = list(config.app["social_auto_upload_platforms"])
+        params.social_publish_platform_overrides = {}
+
+        social_runtime_cols = st.columns(2)
+        with social_runtime_cols[0]:
+            config.app["social_auto_upload_headless"] = st.checkbox(
+                "无头模式",
+                value=config.app.get("social_auto_upload_headless", True),
+            )
+        with social_runtime_cols[1]:
+            config.app["social_auto_upload_debug"] = st.checkbox(
+                "调试日志",
+                value=config.app.get("social_auto_upload_debug", False),
+            )
+
+        config.app["social_auto_upload_local_chrome_path"] = st.text_input(
+            "Chrome 路径（可选）",
+            value=config.app.get("social_auto_upload_local_chrome_path", ""),
+        )
+
+        st.caption("按平台填写账号名。账号 cookie 由集成的 social-auto-upload 复用其约定目录。")
+        st.caption("这里的开关会直接进入当前任务请求，不只是保存到 config。")
+        social_tabs = st.tabs(["抖音", "快手", "小红书", "Bilibili"])
+
+        with social_tabs[0]:
+            douyin_cfg = config.app.setdefault("social_auto_upload_douyin", {})
+            douyin_enabled = st.checkbox("本次任务发布到抖音", value="douyin" in params.social_publish_platforms)
+            douyin_cfg["account_name"] = st.text_input("抖音账号名", value=douyin_cfg.get("account_name", ""))
+            douyin_cfg["title"] = st.text_input("抖音标题模板（可留空）", value=douyin_cfg.get("title", ""))
+            douyin_cfg["desc"] = st.text_area("抖音描述模板（可留空）", value=douyin_cfg.get("desc", ""))
+            douyin_cfg["schedule_time"] = st.text_input("抖音定时发布时间（ISO，例如 2026-04-10T09:00:00）", value=douyin_cfg.get("schedule_time", ""))
+            douyin_cfg["thumbnail_file"] = st.text_input("抖音封面路径（可选）", value=douyin_cfg.get("thumbnail_file", ""))
+            douyin_cfg["product_link"] = st.text_input("抖音商品链接（可选）", value=douyin_cfg.get("product_link", ""))
+            douyin_cfg["product_title"] = st.text_input("抖音商品标题（可选）", value=douyin_cfg.get("product_title", ""))
+            params.social_publish_platform_overrides["douyin"] = SocialPublishPlatformConfig(
+                enabled=douyin_enabled,
+                account_name=douyin_cfg.get("account_name", ""),
+                title=douyin_cfg.get("title", ""),
+                description=douyin_cfg.get("desc", ""),
+                schedule_time=douyin_cfg.get("schedule_time", ""),
+                thumbnail_file=douyin_cfg.get("thumbnail_file", ""),
+                product_link=douyin_cfg.get("product_link", ""),
+                product_title=douyin_cfg.get("product_title", ""),
+            )
+
+        with social_tabs[1]:
+            kuaishou_cfg = config.app.setdefault("social_auto_upload_kuaishou", {})
+            kuaishou_enabled = st.checkbox("本次任务发布到快手", value="kuaishou" in params.social_publish_platforms)
+            kuaishou_cfg["account_name"] = st.text_input("快手账号名", value=kuaishou_cfg.get("account_name", ""))
+            kuaishou_cfg["title"] = st.text_input("快手标题模板（可留空）", value=kuaishou_cfg.get("title", ""))
+            kuaishou_cfg["desc"] = st.text_area("快手描述模板（可留空）", value=kuaishou_cfg.get("desc", ""))
+            kuaishou_cfg["schedule_time"] = st.text_input("快手定时发布时间（ISO）", value=kuaishou_cfg.get("schedule_time", ""))
+            kuaishou_cfg["thumbnail_file"] = st.text_input("快手封面路径（可选）", value=kuaishou_cfg.get("thumbnail_file", ""))
+            params.social_publish_platform_overrides["kuaishou"] = SocialPublishPlatformConfig(
+                enabled=kuaishou_enabled,
+                account_name=kuaishou_cfg.get("account_name", ""),
+                title=kuaishou_cfg.get("title", ""),
+                description=kuaishou_cfg.get("desc", ""),
+                schedule_time=kuaishou_cfg.get("schedule_time", ""),
+                thumbnail_file=kuaishou_cfg.get("thumbnail_file", ""),
+            )
+
+        with social_tabs[2]:
+            xhs_cfg = config.app.setdefault("social_auto_upload_xiaohongshu", {})
+            xhs_enabled = st.checkbox("本次任务发布到小红书", value="xiaohongshu" in params.social_publish_platforms)
+            xhs_cfg["account_name"] = st.text_input("小红书账号名", value=xhs_cfg.get("account_name", ""))
+            xhs_cfg["title"] = st.text_input("小红书标题模板（可留空）", value=xhs_cfg.get("title", ""))
+            xhs_cfg["desc"] = st.text_area("小红书描述模板（可留空）", value=xhs_cfg.get("desc", ""))
+            xhs_cfg["schedule_time"] = st.text_input("小红书定时发布时间（ISO）", value=xhs_cfg.get("schedule_time", ""))
+            xhs_cfg["thumbnail_file"] = st.text_input("小红书封面路径（可选）", value=xhs_cfg.get("thumbnail_file", ""))
+            params.social_publish_platform_overrides["xiaohongshu"] = SocialPublishPlatformConfig(
+                enabled=xhs_enabled,
+                account_name=xhs_cfg.get("account_name", ""),
+                title=xhs_cfg.get("title", ""),
+                description=xhs_cfg.get("desc", ""),
+                schedule_time=xhs_cfg.get("schedule_time", ""),
+                thumbnail_file=xhs_cfg.get("thumbnail_file", ""),
+            )
+
+        with social_tabs[3]:
+            bili_cfg = config.app.setdefault("social_auto_upload_bilibili", {})
+            bili_enabled = st.checkbox("本次任务发布到 Bilibili", value="bilibili" in params.social_publish_platforms)
+            bili_cfg["account_name"] = st.text_input("Bilibili 账号名", value=bili_cfg.get("account_name", ""))
+            bili_cfg["title"] = st.text_input("Bilibili 标题模板（可留空）", value=bili_cfg.get("title", ""))
+            bili_cfg["desc"] = st.text_area("Bilibili 描述模板（可留空）", value=bili_cfg.get("desc", ""))
+            bili_cfg["schedule_time"] = st.text_input("Bilibili 定时发布时间（ISO）", value=bili_cfg.get("schedule_time", ""))
+            bili_cfg["tid"] = st.number_input("Bilibili 分区 tid", min_value=0, value=int(bili_cfg.get("tid", 0) or 0), step=1)
+            params.social_publish_platform_overrides["bilibili"] = SocialPublishPlatformConfig(
+                enabled=bili_enabled,
+                account_name=bili_cfg.get("account_name", ""),
+                title=bili_cfg.get("title", ""),
+                description=bili_cfg.get("desc", ""),
+                schedule_time=bili_cfg.get("schedule_time", ""),
+                tid=int(bili_cfg.get("tid", 0) or 0),
+            )
+
     with st.expander(tr("Click to show API Key management"), expanded=False):
         st.subheader(tr("Manage Pexels and Pixabay API Keys"))
 
@@ -958,6 +1073,7 @@ with right_panel:
             if st.button(tr("Add Pexels API Key")):
                 if new_key and new_key not in config.app["pexels_api_keys"]:
                     config.app["pexels_api_keys"].append(new_key)
+                    config.sync_social_auto_upload_runtime_config()
                     config.save_config()
                     st.success(tr("Pexels API Key added successfully"))
                 elif new_key in config.app["pexels_api_keys"]:
@@ -971,6 +1087,7 @@ with right_panel:
                 )
                 if st.button(tr("Delete Selected Pexels API Key")):
                     config.app["pexels_api_keys"].remove(delete_key)
+                    config.sync_social_auto_upload_runtime_config()
                     config.save_config()
                     st.success(tr("Pexels API Key deleted successfully"))
 
@@ -988,6 +1105,7 @@ with right_panel:
             if st.button(tr("Add Pixabay API Key")):
                 if new_key and new_key not in config.app["pixabay_api_keys"]:
                     config.app["pixabay_api_keys"].append(new_key)
+                    config.sync_social_auto_upload_runtime_config()
                     config.save_config()
                     st.success(tr("Pixabay API Key added successfully"))
                 elif new_key in config.app["pixabay_api_keys"]:
@@ -1001,11 +1119,13 @@ with right_panel:
                 )
                 if st.button(tr("Delete Selected Pixabay API Key")):
                     config.app["pixabay_api_keys"].remove(delete_key)
+                    config.sync_social_auto_upload_runtime_config()
                     config.save_config()
                     st.success(tr("Pixabay API Key deleted successfully"))
 
 start_button = st.button(tr("Generate Video"), use_container_width=True, type="primary")
 if start_button:
+    config.sync_social_auto_upload_runtime_config()
     config.save_config()
     task_id = str(uuid4())
     if not params.video_subject and not params.video_script:
@@ -1095,8 +1215,19 @@ if start_button:
     except Exception:
         pass
 
+    publish_results = result.get("cross_post_results") or []
+    if publish_results:
+        st.subheader("发布结果")
+        for item in publish_results:
+            platform = item.get("platform", "unknown")
+            account_name = item.get("account_name", "")
+            status_icon = "✅" if item.get("success") else "❌"
+            message = item.get("message", "")
+            st.write(f"{status_icon} {platform} {account_name} {message}".strip())
+
     open_task_folder(task_id)
     logger.info(tr("Video Generation Completed"))
     scroll_to_bottom()
 
+config.sync_social_auto_upload_runtime_config()
 config.save_config()

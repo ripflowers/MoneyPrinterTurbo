@@ -1,6 +1,6 @@
 import warnings
 from enum import Enum
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import pydantic
 from pydantic import BaseModel
@@ -176,8 +176,33 @@ class BaseResponse(BaseModel):
     data: Any = None
 
 
+class SocialPublishPlatformConfig(BaseModel):
+    enabled: bool = True
+    title: Optional[str] = ""
+    description: Optional[str] = ""
+    tags: Optional[List[str]] = None
+    schedule_time: Optional[str] = ""
+    thumbnail_file: Optional[str] = ""
+    account_name: Optional[str] = ""
+    product_link: Optional[str] = ""
+    product_title: Optional[str] = ""
+    tid: Optional[int] = None
+
+
+class SocialPublishRequest(BaseModel):
+    video_path: str
+    video_subject: str
+    video_script: Optional[str] = ""
+    tags: Optional[List[str]] = None
+    platforms: Optional[List[str]] = None
+    platform_overrides: Optional[Dict[str, SocialPublishPlatformConfig]] = None
+
+
 class TaskVideoRequest(VideoParams, BaseModel):
-    pass
+    social_publish_enabled: Optional[bool] = None
+    social_publish_auto: Optional[bool] = None
+    social_publish_platforms: Optional[List[str]] = None
+    social_publish_platform_overrides: Optional[Dict[str, SocialPublishPlatformConfig]] = None
 
 
 class TaskQueryRequest(BaseModel):
@@ -304,6 +329,33 @@ class BgmUploadResponse(BaseResponse):
                 "data": {"file": "/MoneyPrinterTurbo/resource/songs/example.mp3"},
             },
         }
+
+class SocialPublishResponse(BaseResponse):
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "status": 200,
+                "message": "success",
+                "data": {
+                    "results": [
+                        {
+                            "platform": "douyin",
+                            "success": True,
+                            "account_name": "main",
+                            "message": "submitted",
+                            "video_path": "/tmp/demo.mp4",
+                            "payload": {
+                                "title": "示例标题",
+                                "description": "示例文案",
+                                "tags": ["AI", "短视频"],
+                                "publish_strategy": "immediate"
+                            }
+                        }
+                    ]
+                },
+            },
+        }
+
 
 class VideoMaterialRetrieveResponse(BaseResponse):
     class Config:
